@@ -1,138 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Debate Hub</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: Arial;
-  background: #0f0f0f;
-  color: white;
-}
-
-/* NAVBAR */
-nav {
-  display: flex;
-  justify-content: space-between;
-  padding: 15px 30px;
-  background: #000;
-}
-nav a {
-  color: white;
-  margin-left: 20px;
-  text-decoration: none;
-}
-
-/* LAYOUT */
-.container {
-  display: grid;
-  grid-template-columns: 200px 1fr 250px;
-  height: calc(100vh - 60px);
-}
-
-/* SIDEBAR */
-.sidebar {
-  background: #111;
-  padding: 20px;
-}
-.sidebar h3 {
-  color: #00ff88;
-}
-.sidebar p {
-  cursor: pointer;
-}
-
-/* MAIN */
-.main {
-  padding: 20px;
-}
-.card {
-  background: #1a1a1a;
-  padding: 15px;
-  margin-bottom: 15px;
-  border-radius: 8px;
-}
-
-/* RIGHT PANEL */
-.right {
-  background: #111;
-  padding: 20px;
-}
-
-/* BUTTON */
-.btn {
-  background: #00ff88;
-  color: black;
-  padding: 10px 15px;
-  border: none;
-  cursor: pointer;
-  border-radius: 5px;
-}
-</style>
+  <title>DebateHub</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 </head>
 
-<body>
+<body style="background:#0f0f0f;color:white;font-family:Arial">
 
-<nav>
-  <div><strong>DebateHub</strong></div>
-  <div>
-    <a href="#">Rooms</a>
-    <a href="#">Debate Arena</a>
-    <a href="#">Profile</a>
-  </div>
-</nav>
+<h2>Debate Hub Chat</h2>
 
-<div class="container">
+<button onclick="login()">Login with Google</button>
+<button onclick="sendMessage()">Send</button>
 
-  <!-- LEFT -->
-  <div class="sidebar">
-    <h3>Topics</h3>
-    <p>Tech</p>
-    <p>Politics</p>
-    <p>Culture</p>
-    <p>Random</p>
-  </div>
+<input id="messageInput" placeholder="Type message">
 
-  <!-- MAIN -->
-  <div class="main">
-    <h2>🔥 Live Rooms</h2>
+<div id="chat"></div>
 
-    <div class="card">
-      <h3>Is AI dangerous?</h3>
-      <p>12 people listening</p>
-      <button class="btn">Join</button>
-    </div>
+<script>
+  // 🔥 PASTE YOUR FIREBASE CONFIG HERE
+  const firebaseConfig = {
+    apiKey: "PASTE HERE",
+    authDomain: "PASTE HERE",
+    projectId: "PASTE HERE",
+  };
 
-    <div class="card">
-      <h3>Best car brands debate</h3>
-      <p>8 people debating</p>
-      <button class="btn">Join</button>
-    </div>
+  firebase.initializeApp(firebaseConfig);
 
-    <h2>⚔️ Active Debates</h2>
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
-    <div class="card">
-      <h3>iPhone vs Android</h3>
-      <p>Vote now</p>
-      <button class="btn">Watch</button>
-    </div>
-  </div>
+  function login() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider);
+  }
 
-  <!-- RIGHT -->
-  <div class="right">
-    <h3>Online Users</h3>
-    <p>Max</p>
-    <p>User123</p>
-    <p>DebaterX</p>
+  function sendMessage() {
+    const input = document.getElementById("messageInput");
+    db.collection("messages").add({
+      text: input.value,
+      createdAt: Date.now()
+    });
+    input.value = "";
+  }
 
-    <h3>Trending</h3>
-    <p>AI</p>
-    <p>Crypto</p>
-  </div>
-
-</div>
+  db.collection("messages")
+    .orderBy("createdAt")
+    .onSnapshot(snapshot => {
+      const chat = document.getElementById("chat");
+      chat.innerHTML = "";
+      snapshot.forEach(doc => {
+        chat.innerHTML += "<p>" + doc.data().text + "</p>";
+      });
+    });
+</script>
 
 </body>
 </html>
