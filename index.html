@@ -1,90 +1,167 @@
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debate Studio</title>
 
-const firebaseConfig = {
-  apiKey: "PASTE",
-  authDomain: "PASTE",
-  projectId: "PASTE"
-};
+  <!-- Firebase v8 (simpler) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+  <style>
+    body {
+      margin:0;
+      background:#0f0f0f;
+      color:white;
+      font-family:Arial;
+    }
+    .top {
+      padding:15px;
+      background:black;
+      display:flex;
+      justify-content:space-between;
+    }
+    .container {
+      display:grid;
+      grid-template-columns: 1fr 300px;
+      height:90vh;
+    }
+    .stage {
+      display:flex;
+      justify-content:space-around;
+      align-items:center;
+    }
+    .chair {
+      width:250px;
+      height:300px;
+      background:#1a1a1a;
+      border-radius:20px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      flex-direction:column;
+      box-shadow:0 0 20px #00ff88;
+    }
+    .chat {
+      background:#111;
+      padding:10px;
+      overflow:auto;
+    }
+  </style>
+</head>
 
-let roomId = null;
+<body>
 
-// 🔥 START MATCHING
-window.start = async function() {
-  const topic = document.getElementById("topic").value;
-  document.getElementById("status").innerText = "Searching...";
+<div class="top">
+  <div>🎙 Debate Studio</div>
+  <div>
+    <select id="topic">
+      <option>Tech</option>
+      <option>Culture</option>
+      <option>Debate</option>
+    </select>
+    <button onclick="start()">Join Studio</button>
+  </div>
+</div>
 
-  // Check if someone is waiting
-  const q = query(collection(db, "waitingUsers"), where("topic", "==", topic));
-  const snapshot = await getDocs(q);
+<div class="container">
+  <div class="stage">
+    <div class="chair">
+      <h3>You</h3>
+    </div>
 
-  if (!snapshot.empty) {
-    // MATCH FOUND
-    const otherUser = snapshot.docs[0];
+    <div class="chair">
+      <h3>Stranger</h3>
+      <p id="status">Not connected</p>
+    </div>
+  </div>
 
-    // Create room
-    const room = await addDoc(collection(db, "rooms"), {
-      topic: topic,
-      createdAt: Date.now()
-    });
+  <div class="chat">
+    <div id="messages"></div>
+    <input id="msg">
+    <button onclick="send()">Send</button>
+  </div>
+</div>
 
-    roomId = room.id;
+<script>
+  // 🔥 PASTE YOUR REAL FIREBASE CONFIG HERE
+  var firebaseConfig = {
+    apiKey: "PASTE REAL VALUE",
+    authDomain: "PASTE REAL VALUE",
+    projectId: "PASTE REAL VALUE"
+  };
 
-    // Remove waiting user
-    await deleteDoc(doc(db, "waitingUsers", otherUser.id));
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
 
-    document.getElementById("status").innerText = "Connected!";
-    listenForMessages();
+  let roomId = null;
 
-  } else {
-    // NO MATCH → WAIT
-    const waiting = await addDoc(collection(db, "waitingUsers"), {
-      topic: topic,
-      createdAt: Date.now()
-    });
+  async function start() {
+    const topic = document.getElementById("topic").value;
+    document.getElementById("status").innerText = "Searching...";
 
-    // Listen for room creation
-    onSnapshot(collection(db, "rooms"), (snapshot) => {
-      snapshot.forEach(docSnap => {
-        if (docSnap.data().topic === topic) {
-          roomId = docSnap.id;
-          document.getElementById("status").innerText = "Connected!";
-          listenForMessages();
-        }
+    const snapshot = await db.collection("waitingUsers")
+      .where("topic","==",topic)
+      .get();
+
+    if (!snapshot.empty) {
+      const otherUser = snapshot.docs[0];
+
+      const room = await db.collection("rooms").add({
+        topic: topic,
+        createdAt: Date.now()
       });
-    });
+
+      roomId = room.id;
+
+      await db.collection("waitingUsers").doc(otherUser.id).delete();
+
+      document.getElementById("status").innerText = "Connected!";
+      listenMessages();
+
+    } else {
+      await db.collection("waitingUsers").add({
+        topic: topic,
+        createdAt: Date.now()
+      });
+
+      db.collection("rooms").onSnapshot(snapshot => {
+        snapshot.forEach(doc => {
+          if (doc.data().topic === topic) {
+            roomId = doc.id;
+            document.getElementById("status").innerText = "Connected!";
+            listenMessages();
+          }
+        });
+      });
+    }
   }
-};
 
-// 💬 SEND MESSAGE
-window.send = async function() {
-  const msg = document.getElementById("msg").value;
-  if (!msg || !roomId) return;
+  async function send() {
+    const msg = document.getElementById("msg").value;
+    if (!msg || !roomId) return;
 
-  await addDoc(collection(db, "messages"), {
-    roomId: roomId,
-    text: msg,
-    createdAt: Date.now()
-  });
-
-  document.getElementById("msg").value = "";
-};
-
-// 👂 LISTEN FOR CHAT
-function listenForMessages() {
-  const q = query(collection(db, "messages"), where("roomId", "==", roomId));
-
-  onSnapshot(q, (snapshot) => {
-    const chat = document.getElementById("messages");
-    chat.innerHTML = "";
-
-    snapshot.forEach(doc => {
-      chat.innerHTML += `<p>${doc.data().text}</p>`;
+    await db.collection("messages").add({
+      roomId: roomId,
+      text: msg,
+      createdAt: Date.now()
     });
-  });
-}
+
+    document.getElementById("msg").value = "";
+  }
+
+  function listenMessages() {
+    db.collection("messages")
+      .where("roomId","==",roomId)
+      .onSnapshot(snapshot => {
+        const chat = document.getElementById("messages");
+        chat.innerHTML = "";
+
+        snapshot.forEach(doc => {
+          chat.innerHTML += "<p>"+doc.data().text+"</p>";
+        });
+      });
+  }
 </script>
+
+</body>
+</html>
