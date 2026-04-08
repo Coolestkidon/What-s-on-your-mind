@@ -1,187 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Debate Studio</title>
-
-  <!-- Firebase v8 (simpler, works in GitHub Pages) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-  <style>
-    body {
-      margin:0;
-      background:#0f0f0f;
-      color:white;
-      font-family:Arial,sans-serif;
-    }
-    .top {
-      padding:15px;
-      background:#000;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    .container {
-      display:grid;
-      grid-template-columns:1fr 300px;
-      height:90vh;
-    }
-    .stage {
-      display:flex;
-      justify-content:space-around;
-      align-items:center;
-    }
-    .chair {
-      width:250px;
-      height:300px;
-      background:#1a1a1a;
-      border-radius:20px;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      flex-direction:column;
-      box-shadow:0 0 20px #00ff88;
-    }
-    .chat {
-      background:#111;
-      padding:10px;
-      overflow:auto;
-      display:flex;
-      flex-direction:column;
-    }
-    #messages {
-      flex:1;
-      overflow:auto;
-      margin-bottom:10px;
-    }
-    input, button {
-      padding:10px;
-      margin:2px;
-      border:none;
-      border-radius:5px;
-    }
-    button {
-      background:#00ff88;
-      cursor:pointer;
-    }
-  </style>
-</head>
-<body>
-
 <div class="top">
-  <div>🎙 Debate Studio</div>
-  <div>
-    <select id="topic">
-      <option>Tech</option>
-      <option>Culture</option>
-      <option>Debate</option>
-    </select>
-    <button onclick="start()">Join Studio</button>
+  <select id="topic">
+    <option>Tech</option>
+    <option>Culture</option>
+    <option>Debate</option>
+  </select>
+  <button onclick="joinStudio()">Join Studio</button>
+</div>
+
+<div class="stage">
+  <div class="chair">
+    <h3>You</h3>
+    <video id="you" autoplay muted playsinline></video>
+  </div>
+  <div class="chair">
+    <h3>Stranger</h3>
+    <video id="stranger" autoplay playsinline></video>
+    <p id="status">Not connected</p>
   </div>
 </div>
 
-<div class="container">
-  <div class="stage">
-    <div class="chair">
-      <h3>You</h3>
-    </div>
-
-    <div class="chair">
-      <h3>Stranger</h3>
-      <p id="status">Not connected</p>
-    </div>
-  </div>
-
-  <div class="chat">
-    <div id="messages"></div>
-    <input id="msg" placeholder="Type message">
-    <button onclick="send()">Send</button>
-  </div>
+<div class="chat">
+  <div id="messages"></div>
+  <input id="msg" placeholder="Type message">
+  <button onclick="sendMessage()">Send</button>
 </div>
-
-<script>
-  // 🔥 REPLACE WITH YOUR FIREBASE CONFIG
-  var firebaseConfig = {
-    apiKey: "PASTE_REAL_KEY",
-    authDomain: "PASTE_REAL_DOMAIN",
-    projectId: "PASTE_REAL_PROJECT_ID"
-  };
-
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  var db = firebase.firestore();
-
-  let roomId = null;
-
-  async function start() {
-    const topic = document.getElementById("topic").value;
-    document.getElementById("status").innerText = "Searching...";
-
-    const snapshot = await db.collection("waitingUsers")
-      .where("topic", "==", topic)
-      .get();
-
-    if (!snapshot.empty) {
-      const otherUser = snapshot.docs[0];
-
-      const room = await db.collection("rooms").add({
-        topic: topic,
-        createdAt: Date.now()
-      });
-
-      roomId = room.id;
-      await db.collection("waitingUsers").doc(otherUser.id).delete();
-      document.getElementById("status").innerText = "Connected!";
-      listenMessages();
-
-    } else {
-      const waiting = await db.collection("waitingUsers").add({
-        topic: topic,
-        createdAt: Date.now()
-      });
-
-      db.collection("rooms").onSnapshot(snapshot => {
-        snapshot.forEach(docSnap => {
-          if (docSnap.data().topic === topic) {
-            roomId = docSnap.id;
-            document.getElementById("status").innerText = "Connected!";
-            listenMessages();
-          }
-        });
-      });
-    }
-  }
-
-  async function send() {
-    const msg = document.getElementById("msg").value;
-    if (!msg || !roomId) return;
-
-    await db.collection("messages").add({
-      roomId: roomId,
-      text: msg,
-      createdAt: Date.now()
-    });
-
-    document.getElementById("msg").value = "";
-  }
-
-  function listenMessages() {
-    db.collection("messages")
-      .where("roomId", "==", roomId)
-      .orderBy("createdAt")
-      .onSnapshot(snapshot => {
-        const chat = document.getElementById("messages");
-        chat.innerHTML = "";
-
-        snapshot.forEach(doc => {
-          chat.innerHTML += "<p>"+doc.data().text+"</p>";
-        });
-      });
-  }
-</script>
-
-</body>
-</html>
