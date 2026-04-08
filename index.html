@@ -1,21 +1,12 @@
-async function joinStudio() {
-  const topic = document.getElementById("topic").value;
+let pc = new RTCPeerConnection();
+let remoteVideo = document.getElementById("stranger");
 
-  const snapshot = await db.collection("waitingUsers")
-    .where("topic", "==", topic)
-    .get();
+// Add your tracks
+localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-  if (!snapshot.empty) {
-    // Found someone
-    const otherUser = snapshot.docs[0];
-    const room = await db.collection("rooms").add({ topic: topic, createdAt: Date.now() });
-    roomId = room.id;
+// Show remote video
+pc.ontrack = (event) => { remoteVideo.srcObject = event.streams[0]; };
 
-    await db.collection("waitingUsers").doc(otherUser.id).delete();
-    document.getElementById("status").innerText = "Connected!";
-  } else {
-    // No one waiting → add self to waitingUsers
-    await db.collection("waitingUsers").add({ topic: topic, createdAt: Date.now() });
-    document.getElementById("status").innerText = "Waiting for a partner...";
-  }
-}
+// Use Firebase as signaling
+// Room doc has offer/answer
+// Room subcollections: offerCandidates, answerCandidates
