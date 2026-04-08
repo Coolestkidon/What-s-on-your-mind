@@ -1,26 +1,6 @@
-<div class="top">
-  <select id="topic">
-    <option>Tech</option>
-    <option>Culture</option>
-    <option>Debate</option>
-  </select>
-  <button onclick="joinStudio()">Join Studio</button>
-</div>
+let localStream = null;
 
-<div class="stage">
-  <div class="chair">
-    <h3>You</h3>
-    <video id="you" autoplay muted playsinline></video>
-  </div>
-  <div class="chair">
-    <h3>Stranger</h3>
-    <video id="stranger" autoplay playsinline></video>
-    <p id="status">Not connected</p>
-  </div>
-</div>
-
-<div class="chat">
-  <div id="messages"></div>
-  <input id="msg" placeholder="Type message">
-  <button onclick="sendMessage()">Send</button>
-</div>
+async function initMedia() {
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  document.getElementById("you").srcObject = localStream;
+}
