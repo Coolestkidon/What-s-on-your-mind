@@ -1,12 +1,71 @@
-let pc = new RTCPeerConnection();
-let remoteVideo = document.getElementById("stranger");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debate Studio</title>
 
-// Add your tracks
-localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+<!-- Firebase v8 -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-// Show remote video
-pc.ontrack = (event) => { remoteVideo.srcObject = event.streams[0]; };
+<style>
+  body { margin:0; font-family:Arial,sans-serif; background:#0f0f0f; color:white; }
+  .top { padding:15px; background:black; display:flex; justify-content:space-between; align-items:center; }
+  .container { display:grid; grid-template-columns:1fr 300px; height:90vh; }
+  .stage { display:flex; justify-content:space-around; align-items:center; }
+  .chair { width:250px; height:300px; background:#1a1a1a; border-radius:20px; display:flex; justify-content:center; align-items:center; flex-direction:column; box-shadow:0 0 20px #00ff88; }
+  video { width:100%; height:100%; border-radius:20px; object-fit:cover; }
+  .chat { background:#111; padding:10px; display:flex; flex-direction:column; }
+  #messages { flex:1; overflow:auto; margin-bottom:10px; }
+  input, button { padding:10px; margin:2px; border:none; border-radius:5px; }
+  button { background:#00ff88; cursor:pointer; }
+</style>
+</head>
+<body>
 
-// Use Firebase as signaling
-// Room doc has offer/answer
-// Room subcollections: offerCandidates, answerCandidates
+<div class="top">
+  <select id="topic">
+    <option>Tech</option>
+    <option>Culture</option>
+    <option>Debate</option>
+  </select>
+  <button onclick="joinStudio()">Join Studio</button>
+</div>
+
+<div class="container">
+  <div class="stage">
+    <div class="chair">
+      <h3>You</h3>
+      <video id="you" autoplay muted playsinline></video>
+    </div>
+
+    <div class="chair">
+      <h3>Stranger</h3>
+      <video id="stranger" autoplay playsinline></video>
+      <p id="status">Not connected</p>
+    </div>
+  </div>
+
+  <div class="chat">
+    <div id="messages"></div>
+    <input id="msg" placeholder="Type message">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+  // 🔥 Paste your Firebase config here
+  var firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+</script>66
+67
+
+
+</body>
+</html>
