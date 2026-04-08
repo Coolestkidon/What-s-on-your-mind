@@ -1,6 +1,21 @@
-let localStream = null;
+async function joinStudio() {
+  const topic = document.getElementById("topic").value;
 
-async function initMedia() {
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  document.getElementById("you").srcObject = localStream;
+  const snapshot = await db.collection("waitingUsers")
+    .where("topic", "==", topic)
+    .get();
+
+  if (!snapshot.empty) {
+    // Found someone
+    const otherUser = snapshot.docs[0];
+    const room = await db.collection("rooms").add({ topic: topic, createdAt: Date.now() });
+    roomId = room.id;
+
+    await db.collection("waitingUsers").doc(otherUser.id).delete();
+    document.getElementById("status").innerText = "Connected!";
+  } else {
+    // No one waiting → add self to waitingUsers
+    await db.collection("waitingUsers").add({ topic: topic, createdAt: Date.now() });
+    document.getElementById("status").innerText = "Waiting for a partner...";
+  }
 }
