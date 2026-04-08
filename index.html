@@ -2,58 +2,75 @@
 <html>
 <head>
   <title>DebateHub</title>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 </head>
 
 <body style="background:#0f0f0f;color:white;font-family:Arial">
 
 <h2>Debate Hub Chat</h2>
 
-<button onclick="login()">Login with Google</button>
-<button onclick="sendMessage()">Send</button>
+<button id="loginBtn">Login with Google</button>
+
+<br><br>
 
 <input id="messageInput" placeholder="Type message">
+<button id="sendBtn">Send</button>
 
 <div id="chat"></div>
 
-<script>
-  // 🔥 PASTE YOUR FIREBASE CONFIG HERE
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // 🔥 PASTE YOUR CONFIG HERE
   const firebaseConfig = {
-    apiKey: "PASTE HERE",
-    authDomain: "PASTE HERE",
-    projectId: "PASTE HERE",
+    apiKey: "PASTE",
+    authDomain: "PASTE",
+    projectId: "PASTE",
   };
 
-  firebase.initializeApp(firebaseConfig);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-  const auth = firebase.auth();
-  const db = firebase.firestore();
+  const provider = new GoogleAuthProvider();
 
-  function login() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider);
-  }
+  // LOGIN
+  document.getElementById("loginBtn").onclick = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+      alert("Logged in!");
+    } catch (err) {
+      console.error(err);
+      alert("Login failed");
+    }
+  };
 
-  function sendMessage() {
+  // SEND MESSAGE
+  document.getElementById("sendBtn").onclick = async () => {
     const input = document.getElementById("messageInput");
-    db.collection("messages").add({
+
+    if (!input.value) return;
+
+    await addDoc(collection(db, "messages"), {
       text: input.value,
       createdAt: Date.now()
     });
-    input.value = "";
-  }
 
-  db.collection("messages")
-    .orderBy("createdAt")
-    .onSnapshot(snapshot => {
-      const chat = document.getElementById("chat");
-      chat.innerHTML = "";
-      snapshot.forEach(doc => {
-        chat.innerHTML += "<p>" + doc.data().text + "</p>";
-      });
+    input.value = "";
+  };
+
+  // LIVE CHAT
+  const q = query(collection(db, "messages"), orderBy("createdAt"));
+
+  onSnapshot(q, (snapshot) => {
+    const chat = document.getElementById("chat");
+    chat.innerHTML = "";
+
+    snapshot.forEach(doc => {
+      chat.innerHTML += `<p>${doc.data().text}</p>`;
     });
+  });
 </script>
 
 </body>
