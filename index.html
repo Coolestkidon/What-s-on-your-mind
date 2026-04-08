@@ -1,128 +1,90 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Debate Studio</title>
-<style>
-body {
-  margin:0;
-  font-family:Arial;
-  background:#0f0f0f;
-  color:white;
-}
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* TOP */
-.top {
-  padding:15px;
-  background:#000;
-  display:flex;
-  justify-content:space-between;
-}
+const firebaseConfig = {
+  apiKey: "PASTE",
+  authDomain: "PASTE",
+  projectId: "PASTE"
+};
 
-/* MAIN LAYOUT */
-.container {
-  display:grid;
-  grid-template-columns: 1fr 300px;
-  height:90vh;
-}
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-/* STUDIO */
-.stage {
-  display:flex;
-  justify-content:space-around;
-  align-items:center;
-}
+let roomId = null;
 
-/* CHAIRS */
-.chair {
-  width:250px;
-  height:300px;
-  background:#1a1a1a;
-  border-radius:20px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-  box-shadow:0 0 20px #00ff88;
-}
+// 🔥 START MATCHING
+window.start = async function() {
+  const topic = document.getElementById("topic").value;
+  document.getElementById("status").innerText = "Searching...";
 
-/* CHAT */
-.chat {
-  background:#111;
-  padding:10px;
-  overflow:auto;
-}
+  // Check if someone is waiting
+  const q = query(collection(db, "waitingUsers"), where("topic", "==", topic));
+  const snapshot = await getDocs(q);
 
-input {
-  width:80%;
-  padding:10px;
-}
+  if (!snapshot.empty) {
+    // MATCH FOUND
+    const otherUser = snapshot.docs[0];
 
-button {
-  background:#00ff88;
-  border:none;
-  padding:10px;
-  cursor:pointer;
-}
-</style>
-</head>
+    // Create room
+    const room = await addDoc(collection(db, "rooms"), {
+      topic: topic,
+      createdAt: Date.now()
+    });
 
-<body>
+    roomId = room.id;
 
-<div class="top">
-  <div>🎙 Debate Studio</div>
-  <div>
-    <select id="topic">
-      <option>Tech</option>
-      <option>Culture</option>
-      <option>Debate</option>
-    </select>
-    <button onclick="start()">Join Studio</button>
-  </div>
-</div>
+    // Remove waiting user
+    await deleteDoc(doc(db, "waitingUsers", otherUser.id));
 
-<div class="container">
-
-  <!-- STAGE -->
-  <div class="stage">
-    <div class="chair">
-      <h3>You</h3>
-      <p>Waiting...</p>
-    </div>
-
-    <div class="chair">
-      <h3>Stranger</h3>
-      <p id="status">Not connected</p>
-    </div>
-  </div>
-
-  <!-- CHAT -->
-  <div class="chat">
-    <div id="messages"></div>
-    <input id="msg">
-    <button onclick="send()">Send</button>
-  </div>
-
-</div>
-
-<script>
-let currentTopic = "";
-
-function start(){
-  currentTopic = document.getElementById("topic").value;
-  document.getElementById("status").innerText = "Searching for " + currentTopic + "...";
-  
-  // Simulated match for now
-  setTimeout(()=>{
     document.getElementById("status").innerText = "Connected!";
-  },2000);
-}
+    listenForMessages();
 
-function send(){
-  let msg = document.getElementById("msg").value;
-  document.getElementById("messages").innerHTML += "<p>"+msg+"</p>";
-  document.getElementById("msg").value="";
+  } else {
+    // NO MATCH → WAIT
+    const waiting = await addDoc(collection(db, "waitingUsers"), {
+      topic: topic,
+      createdAt: Date.now()
+    });
+
+    // Listen for room creation
+    onSnapshot(collection(db, "rooms"), (snapshot) => {
+      snapshot.forEach(docSnap => {
+        if (docSnap.data().topic === topic) {
+          roomId = docSnap.id;
+          document.getElementById("status").innerText = "Connected!";
+          listenForMessages();
+        }
+      });
+    });
+  }
+};
+
+// 💬 SEND MESSAGE
+window.send = async function() {
+  const msg = document.getElementById("msg").value;
+  if (!msg || !roomId) return;
+
+  await addDoc(collection(db, "messages"), {
+    roomId: roomId,
+    text: msg,
+    createdAt: Date.now()
+  });
+
+  document.getElementById("msg").value = "";
+};
+
+// 👂 LISTEN FOR CHAT
+function listenForMessages() {
+  const q = query(collection(db, "messages"), where("roomId", "==", roomId));
+
+  onSnapshot(q, (snapshot) => {
+    const chat = document.getElementById("messages");
+    chat.innerHTML = "";
+
+    snapshot.forEach(doc => {
+      chat.innerHTML += `<p>${doc.data().text}</p>`;
+    });
+  });
 }
 </script>
-
-</body>
-</html>
