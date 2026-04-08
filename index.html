@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Debate Studio</title>
 
-  <!-- Firebase v8 (simpler) -->
+  <!-- Firebase v8 (simpler, works in GitHub Pages) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
@@ -12,17 +15,18 @@
       margin:0;
       background:#0f0f0f;
       color:white;
-      font-family:Arial;
+      font-family:Arial,sans-serif;
     }
     .top {
       padding:15px;
-      background:black;
+      background:#000;
       display:flex;
       justify-content:space-between;
+      align-items:center;
     }
     .container {
       display:grid;
-      grid-template-columns: 1fr 300px;
+      grid-template-columns:1fr 300px;
       height:90vh;
     }
     .stage {
@@ -45,10 +49,26 @@
       background:#111;
       padding:10px;
       overflow:auto;
+      display:flex;
+      flex-direction:column;
+    }
+    #messages {
+      flex:1;
+      overflow:auto;
+      margin-bottom:10px;
+    }
+    input, button {
+      padding:10px;
+      margin:2px;
+      border:none;
+      border-radius:5px;
+    }
+    button {
+      background:#00ff88;
+      cursor:pointer;
     }
   </style>
 </head>
-
 <body>
 
 <div class="top">
@@ -77,19 +97,20 @@
 
   <div class="chat">
     <div id="messages"></div>
-    <input id="msg">
+    <input id="msg" placeholder="Type message">
     <button onclick="send()">Send</button>
   </div>
 </div>
 
 <script>
-  // 🔥 PASTE YOUR REAL FIREBASE CONFIG HERE
+  // 🔥 REPLACE WITH YOUR FIREBASE CONFIG
   var firebaseConfig = {
-    apiKey: "PASTE REAL VALUE",
-    authDomain: "PASTE REAL VALUE",
-    projectId: "PASTE REAL VALUE"
+    apiKey: "PASTE_REAL_KEY",
+    authDomain: "PASTE_REAL_DOMAIN",
+    projectId: "PASTE_REAL_PROJECT_ID"
   };
 
+  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
 
@@ -100,7 +121,7 @@
     document.getElementById("status").innerText = "Searching...";
 
     const snapshot = await db.collection("waitingUsers")
-      .where("topic","==",topic)
+      .where("topic", "==", topic)
       .get();
 
     if (!snapshot.empty) {
@@ -112,22 +133,20 @@
       });
 
       roomId = room.id;
-
       await db.collection("waitingUsers").doc(otherUser.id).delete();
-
       document.getElementById("status").innerText = "Connected!";
       listenMessages();
 
     } else {
-      await db.collection("waitingUsers").add({
+      const waiting = await db.collection("waitingUsers").add({
         topic: topic,
         createdAt: Date.now()
       });
 
       db.collection("rooms").onSnapshot(snapshot => {
-        snapshot.forEach(doc => {
-          if (doc.data().topic === topic) {
-            roomId = doc.id;
+        snapshot.forEach(docSnap => {
+          if (docSnap.data().topic === topic) {
+            roomId = docSnap.id;
             document.getElementById("status").innerText = "Connected!";
             listenMessages();
           }
@@ -151,7 +170,8 @@
 
   function listenMessages() {
     db.collection("messages")
-      .where("roomId","==",roomId)
+      .where("roomId", "==", roomId)
+      .orderBy("createdAt")
       .onSnapshot(snapshot => {
         const chat = document.getElementById("messages");
         chat.innerHTML = "";
