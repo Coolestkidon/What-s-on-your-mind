@@ -10,16 +10,85 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <style>
-body { margin:0; font-family:Arial,sans-serif; background:#0f0f0f; color:white; }
-.top { padding:15px; background:black; display:flex; justify-content:space-between; align-items:center; }
-.container { display:grid; grid-template-columns:1fr 300px; height:90vh; }
-.stage { display:flex; justify-content:space-around; align-items:center; }
-.chair { width:250px; height:300px; background:#1a1a1a; border-radius:20px; display:flex; justify-content:center; align-items:center; flex-direction:column; box-shadow:0 0 20px #00ff88; }
-video { width:100%; height:100%; border-radius:20px; object-fit:cover; }
-.chat { background:#111; padding:10px; display:flex; flex-direction:column; }
-#messages { flex:1; overflow:auto; margin-bottom:10px; }
-input, button { padding:10px; margin:2px; border:none; border-radius:5px; }
-button { background:#00ff88; cursor:pointer; }
+body {
+  margin:0;
+  font-family:Arial,sans-serif;
+  background: linear-gradient(180deg, #1a1a1a, #0f0f0f);
+  color:white;
+}
+.top {
+  padding:15px;
+  background:black;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.container {
+  display:grid;
+  grid-template-columns:1fr 300px;
+  height:90vh;
+}
+.stage {
+  display:flex;
+  justify-content:space-around;
+  align-items:flex-end;
+  height:70vh;
+  padding:20px;
+  background: linear-gradient(180deg, #222, #111);
+}
+.chair {
+  width:280px;
+  height:380px;
+  background: rgba(30,30,30,0.85);
+  border-radius:20px;
+  display:flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  box-shadow: 0 0 30px #00ff88;
+  position: relative;
+  padding-bottom: 10px;
+}
+.chair video {
+  width:90%;
+  height:200px;
+  border-radius:15px;
+  margin-bottom:10px;
+  object-fit:cover;
+  box-shadow:0 0 10px #00ff88;
+}
+.mic {
+  width:20px;
+  height:50px;
+  background:#444;
+  border-radius:10px;
+  position:absolute;
+  top:50px;
+  left:50%;
+  transform:translateX(-50%);
+  box-shadow:0 0 10px #00ff88;
+}
+.chat {
+  background:#111;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+}
+#messages {
+  flex:1;
+  overflow:auto;
+  margin-bottom:10px;
+}
+input, button {
+  padding:10px;
+  margin:2px;
+  border:none;
+  border-radius:5px;
+}
+button {
+  background:#00ff88;
+  cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -35,18 +104,18 @@ button { background:#00ff88; cursor:pointer; }
 
 <div class="container">
   <div class="stage">
-    <div class="chair">
-      <h3>You</h3>
+    <div class="chair" id="chair-you">
+      <div class="mic"></div>
       <video id="you" autoplay muted playsinline></video>
+      <h3>You</h3>
     </div>
-
-    <div class="chair">
-      <h3>Stranger</h3>
+    <div class="chair" id="chair-stranger">
+      <div class="mic"></div>
       <video id="stranger" autoplay playsinline></video>
+      <h3>Stranger</h3>
       <p id="status">Not connected</p>
     </div>
   </div>
-
   <div class="chat">
     <div id="messages"></div>
     <input id="msg" placeholder="Type message">
@@ -66,14 +135,32 @@ const firebaseConfig = {
   measurementId: "G-G4T2GENZ90"
 };
   var firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
+    apiKey: // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAcj4BThTvfEcMdJvHj6BLgZILKbL3jjrI",
+  authDomain: "wotm-c09c9.firebaseapp.com",
+  projectId: "wotm-c09c9",
+  storageBucket: "wotm-c09c9.firebasestorage.app",
+  messagingSenderId: "198099130168",
+  appId: "1:198099130168:web:6da8c9fb4b645e489f93cd",
+  measurementId: "G-G4T2GENZ90"
+};
     authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID"
+    projectId: // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAcj4BThTvfEcMdJvHj6BLgZILKbL3jjrI",
+  authDomain: "wotm-c09c9.firebaseapp.com",
+  projectId: "wotm-c09c9",
+  storageBucket: "wotm-c09c9.firebasestorage.app",
+  messagingSenderId: "198099130168",
+  appId: "1:198099130168:web:6da8c9fb4b645e489f93cd",
+  measurementId: "G-G4T2GENZ90"
+};
   };
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
 
-  // 🔥 Camera setup
+  // Camera setup
   let localStream = null;
   async function initMedia() {
     try {
@@ -85,61 +172,28 @@ const firebaseConfig = {
   }
   initMedia();
 
-  // 🔥 Matchmaking & Chat
+  // Chat & Room
   let roomId = null;
-
-  async function joinStudio() {
-    const topic = document.getElementById("topic").value;
-    document.getElementById("status").innerText = "Searching...";
-
-    const snapshot = await db.collection("waitingUsers").where("topic","==",topic).get();
-
-    if (!snapshot.empty) {
-      const otherUser = snapshot.docs[0];
-      const room = await db.collection("rooms").add({ topic: topic, createdAt: Date.now() });
-      roomId = room.id;
-
-      await db.collection("waitingUsers").doc(otherUser.id).delete();
-      document.getElementById("status").innerText = "Connected!";
-
-      // Start WebRTC as offerer
-      await startWebRTC(true);
-    } else {
-      // No one waiting
-      await db.collection("waitingUsers").add({ topic: topic, createdAt: Date.now() });
-      document.getElementById("status").innerText = "Waiting for a partner...";
-
-      // Poll Firestore to join when someone appears
-      const unsubscribe = db.collection("rooms")
-        .where("topic","==",topic)
-        .onSnapshot(snapshot => {
-          snapshot.docChanges().forEach(async change => {
-            if(change.type === "added") {
-              roomId = change.doc.id;
-              document.getElementById("status").innerText = "Connected!";
-              unsubscribe();
-              await startWebRTC(false); // answerer
-            }
-          });
-        });
-    }
-
-    // Listen for messages
-    db.collection("messages")
-      .where("roomId","==",roomId)
-      .orderBy("createdAt")
-      .onSnapshot(snapshot => {
-        const chat = document.getElementById("messages");
-        chat.innerHTML = "";
-        snapshot.forEach(doc => {
+  db.collection("messages")
+    .orderBy("createdAt")
+    .onSnapshot(snapshot => {
+      const chat = document.getElementById("messages");
+      chat.innerHTML = "";
+      snapshot.forEach(doc => {
+        if(doc.data().roomId === roomId){
           chat.innerHTML += "<p>"+doc.data().text+"</p>";
-        });
+        }
       });
-  }
+      chat.scrollTop = chat.scrollHeight;
+    });
+  document.getElementById("msg").addEventListener("keypress", function(e){
+    if(e.key==="Enter") sendMessage();
+  });
 
   async function sendMessage() {
-    const msg = document.getElementById("msg").value;
-    if (!msg || !roomId) return;
+    const msg = document.getElementById("msg").value.trim();
+    if(!msg) return;
+    if(!roomId){ alert("Not connected yet!"); return; }
 
     await db.collection("messages").add({
       roomId: roomId,
@@ -149,25 +203,51 @@ const firebaseConfig = {
     document.getElementById("msg").value = "";
   }
 
-  // 🔥 WebRTC
+  // WebRTC
   let pc = null;
   let remoteVideo = document.getElementById("stranger");
 
-  async function startWebRTC(isOfferer) {
+  async function joinStudio() {
+    const topic = document.getElementById("topic").value;
+    document.getElementById("status").innerText = "Searching...";
+
+    const snapshot = await db.collection("waitingUsers").where("topic","==",topic).get();
+
+    if(!snapshot.empty){
+      const otherUser = snapshot.docs[0];
+      const room = await db.collection("rooms").add({ topic: topic, createdAt: Date.now() });
+      roomId = room.id;
+      await db.collection("waitingUsers").doc(otherUser.id).delete();
+      document.getElementById("status").innerText = "Connected!";
+      await startWebRTC(true); // offerer
+    } else {
+      await db.collection("waitingUsers").add({ topic: topic, createdAt: Date.now() });
+      document.getElementById("status").innerText = "Waiting for a partner...";
+      const unsubscribe = db.collection("rooms").where("topic","==",topic)
+        .onSnapshot(snapshot => {
+          snapshot.docChanges().forEach(async change => {
+            if(change.type==="added"){
+              roomId = change.doc.id;
+              document.getElementById("status").innerText = "Connected!";
+              unsubscribe();
+              await startWebRTC(false); // answerer
+            }
+          });
+        });
+    }
+  }
+
+  async function startWebRTC(isOfferer){
     pc = new RTCPeerConnection();
-
-    // Add local tracks
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-    // Show remote video
-    pc.ontrack = event => { remoteVideo.srcObject = event.streams[0]; };
+    localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
+    pc.ontrack = e=>{remoteVideo.srcObject = e.streams[0];};
 
     const roomRef = db.collection("rooms").doc(roomId);
     const offerCandidates = roomRef.collection('offerCandidates');
     const answerCandidates = roomRef.collection('answerCandidates');
 
     pc.onicecandidate = event => {
-      if (event.candidate) {
+      if(event.candidate){
         if(isOfferer) offerCandidates.add(event.candidate.toJSON());
         else answerCandidates.add(event.candidate.toJSON());
       }
@@ -176,36 +256,31 @@ const firebaseConfig = {
     if(isOfferer){
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      await roomRef.set({offer: {sdp: offer.sdp, type: offer.type}});
+      await roomRef.set({offer:{sdp:offer.sdp,type:offer.type}});
 
-      roomRef.onSnapshot(snapshot => {
+      roomRef.onSnapshot(snapshot=>{
         const data = snapshot.data();
         if(!pc.currentRemoteDescription && data?.answer){
           pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         }
       });
 
-      answerCandidates.onSnapshot(snapshot => {
-        snapshot.docChanges().forEach(change => {
-          if(change.type === "added"){
-            pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-          }
+      answerCandidates.onSnapshot(snapshot=>{
+        snapshot.docChanges().forEach(change=>{
+          if(change.type==="added") pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
         });
       });
-
     } else {
       const roomSnap = await roomRef.get();
       const offer = roomSnap.data().offer;
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      await roomRef.update({answer: {sdp: answer.sdp, type: answer.type}});
+      await roomRef.update({answer:{sdp:answer.sdp,type:answer.type}});
 
-      offerCandidates.onSnapshot(snapshot => {
-        snapshot.docChanges().forEach(change => {
-          if(change.type === "added"){
-            pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-          }
+      offerCandidates.onSnapshot(snapshot=>{
+        snapshot.docChanges().forEach(change=>{
+          if(change.type==="added") pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
         });
       });
     }
